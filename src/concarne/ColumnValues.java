@@ -1,6 +1,7 @@
 package concarne;
 
 import java.util.Arrays;
+import java.util.Random;
 
 /**
  * Created by macbookdata on 23.05.14.
@@ -11,10 +12,20 @@ public class ColumnValues {
     String[] columnStrings;
     boolean parsed = false;
 
+    static final int valueCount = 100000;
+
     public ColumnValues(String... valueStrings){
 
         columnStrings = valueStrings;
 
+    }
+
+    public ColumnValues(){
+        Random random = new Random();
+        columnStrings = new String[4];
+        for (int i = 0; i < columnStrings.length; i++) {
+            columnStrings[i] = ""+random.nextInt(valueCount);
+        }
     }
 
     protected void parse(){
@@ -67,4 +78,5 @@ public class ColumnValues {
         result = 31 * result + (columnStrings != null ? Arrays.hashCode(columnStrings) : 0);
         return result;
     }
+
 }

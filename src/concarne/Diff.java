@@ -4,11 +4,13 @@ import com.sun.org.apache.bcel.internal.generic.NOP;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Random;
 
 /**
  * Created by macbookdata on 23.05.14.
  */
 public class Diff {
+
 
     HashMap<Identifier, Byte> ops = new HashMap<>();
     int[] counts = new int[3];
@@ -107,6 +109,7 @@ public class Diff {
         countOps();
 
     }
+
 
     private static byte turnOp(byte op, boolean turn){
         if(!turn)

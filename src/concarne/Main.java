@@ -1,7 +1,9 @@
 package concarne;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Random;
 
 public class Main {
 
@@ -9,12 +11,18 @@ public class Main {
 
     public static void main(String[] args) throws IOException {
 
-
         long before = System.currentTimeMillis();
+        if(args.length > 1){
+            generateSnapshots(Integer.parseInt(args[0]),args[1]);
+            System.out.println("Total time elapsed: " + (System.currentTimeMillis() - before));
+            return;
+        }
+
+
 
         Snapshot[] snapshots = new Snapshot[numberOfSnapshots];
         for (int i = 1; i <= numberOfSnapshots; i++) {
-            snapshots[i - 1] = new Snapshot("./data/R" + i + ".csv");
+            snapshots[i - 1] = new Snapshot("./R" + i + ".csv");
             System.out.println(String.format("Snapshot %s size: %s tuples", i, snapshots[i - 1].tuples.size()));
         }
 
@@ -205,6 +213,24 @@ public class Main {
                     ", resultAlreadyCalculated=" + resultAlreadyCalculated +
                     '}';
         }
+    }
+
+    public static void generateSnapshots(int size, String path) throws IOException {
+        //Random random = new Random();
+        float[] opProbabilities = new float[]{0.02f,0.02f,0.02f,0.94f};
+
+        // size = 20.000.000
+        Snapshot[] snapshots = new Snapshot[5];
+        snapshots[0] = new Snapshot(size);
+        snapshots[1] = new Snapshot(snapshots[0],opProbabilities);
+        snapshots[2] = new Snapshot(snapshots[1],opProbabilities);
+        snapshots[3] = new Snapshot(snapshots[0],opProbabilities);
+        snapshots[4] = new Snapshot(snapshots[1],opProbabilities);
+
+        for (int i = 0; i < 5; i++) {
+            snapshots[i].writeSnapshot(path + File.separator + "R" + (i+1) + ".csv");
+        }
+
     }
 
 

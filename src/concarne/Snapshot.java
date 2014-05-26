@@ -3,7 +3,9 @@ package concarne;
 import com.google.common.base.Splitter;
 import org.apache.commons.io.FileUtils;
 
+import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.util.*;
 
@@ -13,21 +15,26 @@ import java.util.*;
 public class Snapshot {
 
     HashMap<Identifier, ColumnValues> tuples = new HashMap<>();
+    boolean escaping = false;
+    String delimitor = ";";
 
-    static String[] allowedDelimitors = new String[]{",", ";", " ", ":"};
+    static final String[] allowedDelimitors = new String[]{",", ";", " ", ":"};
+    static final float[] delimiterProbabilites = new float[]{0.2f,0.6f,0.2f,0.2f};
+    static final float escapeProbabillity = 0.2f;
 
     String path;
 
     public Snapshot(String path) throws IOException {
 
-        this.path = path.substring(7,9);
+//        this.path = path.substring(7,9);
+        this.path = path;
 
         List<String> lines = FileUtils.readLines(new File(path));
         String firstLine = lines.get(0);
         lines.remove(0);
 
-        boolean escaping = lines.get(1).startsWith("\"");
-        String delimitor = null;
+        escaping = lines.get(1).startsWith("\"");
+        delimitor = null;
 
         for(String possibleDelim : allowedDelimitors){
 
@@ -35,6 +42,10 @@ public class Snapshot {
             if(firstLine.contains(possibleDelim))
                 break;
 
+        }
+        if (delimitor==null){
+            System.out.println("WARNING: no delimitor found. Take default: \";\"");
+            delimitor = ";";
         }
 
         for(String line : lines){
@@ -56,8 +67,95 @@ public class Snapshot {
 
     }
 
+    public Snapshot(int size){
+        for (int i = 0; i < size; i++) {
+           tuples.put(new Identifier(""+i),new ColumnValues());
+        }
+
+    }
+
+    public Snapshot(Snapshot snapshot, float[] opProbabilities){
+        Random random = new Random();
+        float opRandom;
+        for(Map.Entry<Identifier,ColumnValues> entry: snapshot.tuples.entrySet()){
+            opRandom = random.nextFloat();
+            byte op;
+            for (op = 0; op < 5; op++) {
+                if(opRandom <= opProbabilities[op]){
+
+                    break;
+                }
+                opRandom -= opProbabilities[op];
+            }
+            //System.out.println(op);
+            switch(op){
+                case Diff.INS:
+                    Identifier newIdentifier = new Identifier(random.nextInt());
+                    while(newIdentifier.id < 0 || snapshot.tuples.containsKey(newIdentifier)){
+                        newIdentifier = new Identifier(random.nextInt());
+                    }
+                    tuples.put(newIdentifier,new ColumnValues());
+                    break;
+                case Diff.DEL:
+                    //tuples.put(entry.getKey(),op);
+                    break;
+                case Diff.SUB:
+                    ColumnValues newColumnValues = new ColumnValues();
+                    while(newColumnValues.equals(entry.getValue())){
+                        newColumnValues = new ColumnValues();
+                    }
+                    tuples.put(entry.getKey(),newColumnValues);
+                    break;
+                case Diff.NOP:
+                    tuples.put(entry.getKey(),entry.getValue());
+                    break;
+            }
+
+
+        }
+    }
+
     public Iterator<Map.Entry<Identifier,ColumnValues> > getIterator(){
         return tuples.entrySet().iterator();
+    }
+
+
+    public void writeSnapshot(String path) throws IOException {
+        File file = new File(path);
+        Random random = new Random();
+        escaping = (random.nextFloat() <= escapeProbabillity);
+        float delimitorRandom = random.nextFloat();
+        for (int i = 0; i < 4; i++) {
+            if(delimitorRandom <= delimiterProbabilites[i]){
+                delimitor = allowedDelimitors[i];
+                break;
+            }
+            delimitorRandom -= delimiterProbabilites[i];
+        }
+        BufferedWriter bw = new BufferedWriter(new FileWriter(file));
+        bw.write(buildLine(new Identifier("PK"), new ColumnValues("lat1", "lon1", "lat2", "lon2")));
+        for (Map.Entry<Identifier, ColumnValues> tuple : tuples.entrySet()) {
+            bw.write(buildLine(tuple.getKey(), tuple.getValue()));
+        }
+        System.out.println(tuples.size());
+        bw.close();
+    }
+
+    private String buildLine(Identifier identifier, ColumnValues columnValues){
+        String line;
+        if(!escaping) {
+            line = identifier.toString();
+            for (String col : columnValues.columnStrings) {
+                line += delimitor + col;
+            }
+        }else{
+            line = "\""+identifier.toString()+"\"";
+            for (String col : columnValues.columnStrings) {
+                line += delimitor + "\""+col+"\"";
+            }
+        }
+        //System.out.println(line);
+        return line+"\n";
     }
 
 }

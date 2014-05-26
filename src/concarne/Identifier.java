@@ -14,10 +14,15 @@ class Identifier {
             id = Long.parseLong(string);
             if(! string.equals(""+id)) throw new NumberFormatException("Wrongly parsed.");
         } catch (NumberFormatException e){
-            e.printStackTrace();
+            //e.printStackTrace();
             this.idString = string;
         }
 
+    }
+
+    public Identifier(long id){
+        this.id = id;
+        this.idString = ""+id;
     }
 
     @Override
@@ -38,5 +43,12 @@ class Identifier {
         int result = (int) (id ^ (id >>> 32));
         result = 31 * result + (idString != null ? idString.hashCode() : 0);
         return result;
+    }
+
+    @Override
+    public String toString(){
+        if(idString!=null)
+            return idString;
+        return ""+id;
     }
 }
