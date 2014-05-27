@@ -1,13 +1,10 @@
 package concarne;
 
-import com.google.common.base.Splitter;
 import org.apache.commons.io.FileUtils;
 
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
+import java.io.*;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Created by macbookdata on 23.05.14.
@@ -16,12 +13,15 @@ public class Snapshot {
 
     public HashMap<Identifier, ColumnValues> tuples = new HashMap<>();
 
-    private byte[][] brokenLines;
+    private Map<Integer, byte[]> brokenLines; //blockID * 2 + (beginOfBlock ? 0 : 1)
 
     boolean escaping = false;
-    char delimitor = ';';
+    byte delimiter = (byte)';';
+    byte lineFeed = 0;
+    static final byte escapeVal = (byte)'"';
 
-    static final char[] allowedDelimitors = new char[]{',', ';', ' ', ':'};
+    static final byte[] allowedDelimiters = new byte[]{(byte)',',(byte)';', (byte)' ', (byte)':'};
+
     static final float[] delimiterProbabilites = new float[]{0.2f,0.6f,0.2f,0.2f};
     static final float escapeProbabillity = 0.2f;
 
@@ -32,10 +32,74 @@ public class Snapshot {
 
     String path;
 
-    //public Snapshot(String path, int bufferSize, )
+    public Snapshot(String path, int bufferSize, int expectedBlockCount) throws IOException {
+
+
+        long before = System.currentTimeMillis();
+
+        BufferedInputStream f = new BufferedInputStream(new FileInputStream(path));
+        byte[] buffer = new byte[bufferSize];
+
+
+        brokenLines = new ConcurrentHashMap<Integer, byte[]>(expectedBlockCount);
+        delimiter = 0;
+
+        byte[] brokenLine;
+        long checkSum = 0L;
+        int nRead, blockId = 0, bufferPos;
+        while ( (nRead=f.read( buffer, 0, bufferSize )) != -1 ) {
+            bufferPos=0;
+
+            //read first block
+            if(delimiter == 0){
+                if(buffer[0]==escapeVal) {
+                    escaping = true;
+                    delimiter = buffer[4];
+                    bufferPos = 32;
+                }else{
+                    escaping = false;
+                    delimiter = buffer[2];
+                    bufferPos = 22;
+                }
+                if(buffer[bufferPos]=='\r') {
+                    lineFeed = 1;
+                    bufferPos++;
+                }
+                else
+                    lineFeed = 0;
+                System.out.println("escaping: "+escaping);
+                System.out.println("delimiter: "+(char)delimiter);
+
+            // read another block
+            }else {
+                for (; bufferPos < bufferSize; bufferPos++) {
+                    if (buffer[bufferPos]=='\n'){
+                        brokenLine = new byte[bufferPos];
+                        System.arraycopy(buffer,0,brokenLine,0,bufferPos);
+                        synchronized (brokenLines){
+                            brokenLines.put(blockId*2,brokenLine);
+                            //System.out.println(Arrays.toString(brokenLine));
+                        }
+                        break;
+                    }
+                }
+            }
+
+            assert (buffer[bufferPos]=='\n');
+            //System.out.println("bufferPos: "+bufferPos);
+
+            blockId++;
+
+        }
+
+    }
+
+    private void parseBLock(byte[] block, int offset){
+        //if(offset==0)
+    }
 
     /**
-     * Reads the data from disk, determines the delimitor and escaping and hashes all the tuples.
+     * Reads the data from disk, determines the delimiter and escaping and hashes all the tuples.
      * @param path
      * @throws IOException
      */
@@ -52,18 +116,18 @@ public class Snapshot {
         lines.remove(0);
 
         escaping = lines.get(1).startsWith("\"");
-        delimitor = 0;
+        delimiter = 0;
 
-        for(char possibleDelim : allowedDelimitors){
+        for(byte possibleDelim : allowedDelimiters){
 
-            delimitor = possibleDelim;
-            if(firstLine.contains(""+possibleDelim))
+            delimiter = possibleDelim;
+            if(firstLine.contains(""+(char)possibleDelim))
                 break;
 
         }
-        if (delimitor==0){
-            System.out.println("WARNING: no delimitor found. Take default: \";\"");
-            delimitor = ';';
+        if (delimiter ==0){
+            System.out.println("WARNING: no delimiter found. Take default: \";\"");
+            delimiter = ';';
         }
 
         long tstamp_startParsing = System.currentTimeMillis();
@@ -72,11 +136,11 @@ public class Snapshot {
 
             String[] parts;
             if(escaping){
-//                parts = Splitter.on(String.format("\"%s\"", delimitor)).split(line.substring(1,line.length()-1));
-                parts = line.substring(1, line.length()-1).split("\"" + delimitor + "\"");
+//                parts = Splitter.on(String.format("\"%s\"", delimiter)).split(line.substring(1,line.length()-1));
+                parts = line.substring(1, line.length()-1).split("\"" + delimiter + "\"");
             } else {
-//                parts = Splitter.on(delimitor).split(line);
-                parts = line.split(""+delimitor);
+//                parts = Splitter.on(delimiter).split(line);
+                parts = line.split(""+ delimiter);
             }
 
             Identifier id = new Identifier(parts[0]);
@@ -103,7 +167,7 @@ public class Snapshot {
         float delimitorRandom = random.nextFloat();
         for (int i = 0; i < 4; i++) {
             if(delimitorRandom <= delimiterProbabilites[i]){
-                delimitor = allowedDelimitors[i];
+                delimiter = allowedDelimiters[i];
                 break;
             }
             delimitorRandom -= delimiterProbabilites[i];
@@ -122,12 +186,12 @@ public class Snapshot {
         if(!escaping) {
             line = identifier.toString();
             for (String col : columnValues.columnStrings) {
-                line += delimitor + col;
+                line += delimiter + col;
             }
         }else{
             line = "\""+identifier.toString()+"\"";
             for (String col : columnValues.columnStrings) {
-                line += delimitor + "\""+col+"\"";
+                line += delimiter + "\""+col+"\"";
             }
         }
         //System.out.println(line);
@@ -143,6 +207,7 @@ public class Snapshot {
     public Snapshot(Snapshot snapshot, float[] opProbabilities){
         Random random = new Random();
         float opRandom;
+        boolean added;
         for(Map.Entry<Identifier,ColumnValues> entry: snapshot.tuples.entrySet()){
             opRandom = random.nextFloat();
             byte op;
@@ -153,24 +218,37 @@ public class Snapshot {
                 }
                 opRandom -= opProbabilities[op];
             }
+            added = false;
             //System.out.println(op);
             switch(op){
                 case Diff.INS:
                     Identifier newIdentifier = new Identifier(random.nextInt());
-                    while(newIdentifier.id < 0 || snapshot.tuples.containsKey(newIdentifier)){
-                        newIdentifier = new Identifier(random.nextInt());
+                    for (int i = 0; i < 10; i++) {
+                        if(newIdentifier.id >= 0 && snapshot.tuples.containsKey(newIdentifier)){
+                            tuples.put(newIdentifier,ColumnValues.random());
+                            added = true;
+                            break;
+                        }
+                        newIdentifier = new Identifier(random.nextInt() + snapshot.tuples.size());
                     }
-                    tuples.put(newIdentifier,ColumnValues.random());
+                    if(!added)
+                        tuples.put(newIdentifier,ColumnValues.random());
                     break;
                 case Diff.DEL:
                     //tuples.put(entry.getKey(),op);
                     break;
                 case Diff.SUB:
                     ColumnValues newColumnValues = ColumnValues.random();
-                    while(newColumnValues.equals(entry.getValue())){
-                        newColumnValues = ColumnValues.random();
+                    for (int i = 0; i < 10; i++) {
+                       if(!newColumnValues.equals(entry.getValue())){
+                           tuples.put(entry.getKey(),newColumnValues);
+                           added = true;
+                           break;
+                       }
+                       newColumnValues = ColumnValues.random();
                     }
-                    tuples.put(entry.getKey(),newColumnValues);
+                    if(!added)
+                        tuples.put(entry.getKey(), newColumnValues);
                     break;
                 case Diff.NOP:
                     tuples.put(entry.getKey(),entry.getValue());

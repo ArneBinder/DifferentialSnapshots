@@ -70,4 +70,8 @@ public class SnapshotTest {
 
     }
 
+    @Test public void readFirstBlock() throws IOException {
+        Snapshot snapshot = new Snapshot("data/R3.csv",1024,2);
+    }
+
 }
