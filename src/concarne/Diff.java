@@ -27,6 +27,11 @@ public class Diff {
     public String forSnaps;
 
 
+    public Diff(Snapshot snapshotA, final Snapshot snapshotB){
+
+        this(snapshotA, snapshotB, Runtime.getRuntime().availableProcessors());
+
+    }
 
     public Diff (Snapshot snapshotA, final Snapshot snapshotB, int numThreads) {
 

@@ -139,10 +139,10 @@ public class Snapshot {
             String[] parts;
             if(escaping){
 //                parts = Splitter.on(String.format("\"%s\"", delimiter)).split(line.substring(1,line.length()-1));
-                parts = line.substring(1, line.length()-1).split("\"" + delimiter + "\"");
+                parts = line.substring(1, line.length()-1).split("\"" + (char)delimiter + "\"");
             } else {
 //                parts = Splitter.on(delimiter).split(line);
-                parts = line.split(""+ delimiter);
+                parts = line.split(""+(char) delimiter);
             }
 
             Identifier id = new Identifier(parts[0]);
