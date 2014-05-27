@@ -1,5 +1,6 @@
 package concarne;
 
+import concarne.scheduler.AllTransitiveScheduler;
 import concarne.scheduler.ShortestPathScheduler;
 
 import java.io.File;
@@ -25,7 +26,7 @@ public class Main {
         // read snapshot files from disk
         Snapshot[] snapshots = new Snapshot[numberOfSnapshots];
         for (int i = 1; i <= numberOfSnapshots; i++) {
-            snapshots[i - 1] = new Snapshot(path + "/R" + i + ".csv");
+            snapshots[i - 1] = new Snapshot(path + "/R" + i + ".csv", 10000);
             System.out.println(String.format("Snapshot %s size: %s tuples", i, snapshots[i - 1].tuples.size()));
         }
         System.out.println("\ntimeRead: " + Snapshot.timeRead + " ms");

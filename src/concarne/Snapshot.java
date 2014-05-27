@@ -13,9 +13,7 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class Snapshot {
 
-    public ConcurrentHashMap<Identifier, ColumnValues> tuples = new ConcurrentHashMap<>();
-
-    private byte[][] brokenLines; //blockID * 2 + (beginOfBlock ? 0 : 1)
+    public HashMap<Identifier, ColumnValues> tuples = new HashMap<>();
 
     boolean escaping = false;
     byte delimiter = (byte)';';
@@ -36,6 +34,7 @@ public class Snapshot {
 
     public Snapshot(String path, int bufferSize) throws IOException {
 
+        this.path = path;
         int expectedBlockCount = (int) (new File(path).length() / (long) bufferSize);
 
         long before = System.currentTimeMillis();
@@ -44,11 +43,13 @@ public class Snapshot {
         byte[] buffer = new byte[bufferSize];
 
         // half line endings and half line starts
-        brokenLines = new byte[expectedBlockCount*2][];//<Integer, byte[]>(expectedBlockCount);
+        //brokenLines = new byte[expectedBlockCount*2][];//<Integer, byte[]>(expectedBlockCount);
+        byte[] lastBlock = new byte[bufferSize];
+        int lastOffset = 0;
         delimiter = 0;
 
-        byte[] brokenLine;
-        int nRead, blockId = 0, bufferPos;
+        byte[] brokenLine = new byte[0];
+        int nRead, bufferPos;
 
         // read file block wise
         while ( (nRead=f.read( buffer, 0, bufferSize )) != -1 ) {
@@ -80,31 +81,48 @@ public class Snapshot {
                 System.out.println("escaping: "+escaping);
                 System.out.println("delimiter: "+(char)delimiter);
 
+                if(nRead < bufferSize){
+                    lastBlock = new byte[nRead];
+                }
+
+               // parseBlock(lastBlock, bufferPos+1, brokenLine);
+                System.arraycopy(buffer, 0, lastBlock, 0, lastBlock.length);
+                lastOffset = bufferPos;
+
             // read another block
             } else {
                 // read until first new line in block
                 for (; bufferPos < bufferSize; bufferPos++) {
                     if (buffer[bufferPos]=='\n'){
-                        brokenLine = new byte[bufferPos-lineFeed];
-                        System.arraycopy(buffer, 0, brokenLine, 0, bufferPos-lineFeed);
+                        brokenLine = new byte[bufferPos+1-lineFeed];
+//                        System.out.println(String.format(""));
+                        System.arraycopy(buffer, 0, brokenLine, 0, bufferPos+1-lineFeed);
 
                         // save part before new line (second half of a broken line)
-                        synchronized (brokenLines){
-                            brokenLines[blockId] = brokenLine;
+                        //synchronized (brokenLines){
                             //System.out.println(Arrays.toString(brokenLine));
-                        }
+                        //}
                         break;
                     }
                 }
+                assert (buffer[bufferPos]=='\n');
+                parseBlock(lastBlock, lastOffset+1, brokenLine);
+
+                if(nRead < bufferSize){
+                    lastBlock = new byte[nRead];
+                }
+
+                System.arraycopy(buffer, 0, lastBlock, 0, lastBlock.length);
+
+                lastOffset = bufferPos;
+
+
             }
 
-            assert (buffer[bufferPos]=='\n');
-            //System.out.println("bufferPos: "+bufferPos);
+        } // end while file has more bytes
 
-            parseBLock(buffer, blockId, bufferPos+1);
-            blockId++;
-
-        }
+        // process last block of file
+        parseBlock(lastBlock, lastOffset+1, new byte[0]);
 
     }
 
@@ -115,55 +133,58 @@ public class Snapshot {
      * Parses 1 column value for each line of the block
      * store last line end in broken lines
      * @param block byte data of the block
-     * @param blockId index of the block (to write broken line to correct position)
      * @param offset first character offset of first complete line
      */
-    private void parseBLock(byte[] block, int blockId, int offset){
+    private void parseBlock(byte[] block, int offset, byte[] brokenLine){
 
+        int blockSize = block.length;
+
+ //       System.out.println("Process block: "+new String(block) + "\nfrom offset "+offset);
+//        System.out.println("Broken line: "+new String(brokenLine));
 
         byte[][] valueBytes = new byte[5][COLUMN_LENGTH];
         int columnIndex = 0;    // which column are we reading bytes for?
         int byteIdx = 0;        // where in the byte array for the column goes the next byte
 
         boolean readEscape = false; // whether the current characters are escaped
-        boolean lineComplete = false;
 
         byte[] workingBuffer = block;
+        int size = blockSize;
 
-        for (int i = offset; i < workingBuffer.length; i++) {
+        for (int i = offset; i < size; i++) {
 
-            if(escaping && block[i] == escapeVal){
+//            System.out.print(new String(new byte[]{workingBuffer[i]}));
+
+            if(escaping && workingBuffer[i] == escapeVal){
                 readEscape = !readEscape; // toggle within escaped char sequence
-            } else if(! readEscape && block[i] == delimiter){
+            } else if(! readEscape && workingBuffer[i] == delimiter){
                 columnIndex++;
                 byteIdx = 0;
-            } else if(block[i] == '\n'){
-//               tuples.put(new Identifier(valueBytes[0]), new ColumnValues(valueBytes));
-               lineComplete = true;
+            } else if(workingBuffer[i] == '\n'){
+
+               tuples.put(new Identifier(valueBytes[0]), new ColumnValues(valueBytes));
                columnIndex = 0;
                byteIdx = 0;
 
             // read byte into column bytes
-            } else if(block[i] != '\r'){
-                valueBytes[columnIndex][byteIdx] = block[i];
+            } else if(workingBuffer[i] != '\r'){
+                if(byteIdx==30){
+                    System.out.println("");
+                }
+                valueBytes[columnIndex][byteIdx] = workingBuffer[i];
                 byteIdx++;
-                lineComplete = false;
             }
 
             // start grabbing data from block after having finished the broken line data
-            if(workingBuffer != brokenLines[blockId] && i == workingBuffer.length-1){
-                workingBuffer = brokenLines[blockId];
+            if(workingBuffer != brokenLine && i == size-1){
+                workingBuffer = brokenLine;
+                size = brokenLine.length;
                 i = -1; // because i is incremented after each iteration
             }
 
         }
 
-        // check if line was broken by blocks
-        if(! lineComplete){
 
-
-
-        }
 
 
     }
@@ -214,7 +235,7 @@ public class Snapshot {
             }
 
             Identifier id = new Identifier(parts[0]);
-            ColumnValues columnValues = new ColumnValues(new String[]{parts[1],parts[2],parts[3],parts[4]});
+            ColumnValues columnValues = new ColumnValues(parts[1],parts[2],parts[3],parts[4]);
             tstamp_startHashing = System.currentTimeMillis();
             tuples.put(id, columnValues);
             timeHash += (System.currentTimeMillis()-tstamp_startHashing);
@@ -243,7 +264,7 @@ public class Snapshot {
             delimitorRandom -= delimiterProbabilites[i];
         }
         BufferedWriter bw = new BufferedWriter(new FileWriter(file));
-        bw.write(buildLine(new Identifier("PK"), new ColumnValues(new String[]{"lat1", "lon1", "lat2", "lon2"})));
+        bw.write(buildLine(new Identifier("PK"), new ColumnValues("lat1", "lon1", "lat2", "lon2")));
         for (Map.Entry<Identifier, ColumnValues> tuple : tuples.entrySet()) {
             bw.write(buildLine(tuple.getKey(), tuple.getValue()));
         }
@@ -255,13 +276,13 @@ public class Snapshot {
         String line;
         if(!escaping) {
             line = identifier.toString();
-            for (String col : columnValues.columnStrings) {
-                line += (char) delimiter + col;
+            for (byte[] col : columnValues.rawData) {
+                line += (char) delimiter + new String(col);
             }
         }else{
             line = "\""+identifier.toString()+"\"";
-            for (String col : columnValues.columnStrings) {
-                line += (char) delimiter + "\""+col+"\"";
+            for (byte[] col : columnValues.rawData) {
+                line += (char) delimiter + "\""+ new String(col) + "\"";
             }
         }
         //System.out.println(line);
@@ -296,14 +317,14 @@ public class Snapshot {
             // perform operation
             switch(op){
                 case Diff.INS:
-                    Identifier newIdentifier = new Identifier(random.nextInt());
+                    Identifier newIdentifier = Identifier.random();
                     for (int i = 0; i < 10; i++) {
-                        if(newIdentifier.id >= 0 && ! snapshot.tuples.containsKey(newIdentifier)){
+                        if( ! snapshot.tuples.containsKey(newIdentifier)){
                             tuples.put(newIdentifier,ColumnValues.random());
                             added = true;
                             break;
                         }
-                        newIdentifier = new Identifier(random.nextInt() + snapshot.tuples.size());
+                        newIdentifier = Identifier.random();
                     }
                     if(!added)
                         tuples.put(newIdentifier,ColumnValues.random());
@@ -344,4 +365,17 @@ public class Snapshot {
 
     }
 
+    @Override
+    public boolean equals(Object obj) {
+
+        Snapshot other = (Snapshot) obj;
+        if(tuples.size() != other.tuples.size()) return false;
+
+        boolean equals = true;
+        equals &= tuples.entrySet().containsAll(other.tuples.entrySet());
+        equals &= other.tuples.entrySet().containsAll(tuples.entrySet());
+
+        return equals;
+
+    }
 }

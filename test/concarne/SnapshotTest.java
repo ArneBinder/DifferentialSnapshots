@@ -97,6 +97,17 @@ public class SnapshotTest {
 
     }
 
+    @Test public void fastParser() throws IOException {
+
+        Snapshot s = new Snapshot("./data/R1.csv", 50);
+        System.out.println("\n\n\n");
+
+        for (Map.Entry e : s.tuples.entrySet()){
+            System.out.println("the tuples: "+e +" hash: "+e.getKey().hashCode());
+        }
+
+    }
+
     private List<String> resultsForSample(){
 
         return Arrays.asList(

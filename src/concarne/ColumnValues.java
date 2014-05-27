@@ -1,5 +1,8 @@
 package concarne;
 
+import com.google.common.base.Joiner;
+
+import java.util.Arrays;
 import java.util.Random;
 
 /**
@@ -8,73 +11,98 @@ import java.util.Random;
 public class ColumnValues {
 
 //    double[] values;
-    String[] columnStrings;
-    boolean hashed = false;
+//    String[] columnStrings;
+//    boolean hashed = false;
+//    String normString;
 
-    public int valuesHash;
+    byte[][] rawData = new byte[4][];
+    int[] hashes;
+
     public static long timeParsed = 0;
-    String normString;
     static final int maxRandomValue = 100000;
 
-    public ColumnValues(String[] valueStrings){
-
-        columnStrings = valueStrings;
-
-    }
-
-    protected void parse(){
-
-        long before = System.currentTimeMillis();
-
-        StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < columnStrings.length; i++) {
-            sb.append(columnStrings[i]);
-            sb.append("\n");
-        }
-        normString = sb.toString();
-        valuesHash = normString.hashCode();
-
-        timeParsed += System.currentTimeMillis()-before;
-//        long start = System.currentTimeMillis();
-//        try {
-//            values = new double[4];
-//            for (int j = 0; j < 4; j++) {
+//    public ColumnValues(String[] valueStrings){
 //
-//                values[j] = Double.parseDouble(columnStrings[j]);
-////                BigDecimal mustValue = new BigDecimal(columnStrings[j+1]);
-////                if(mustValue.compareTo() != 0){
-////                    throw new NumberFormatException(String.format("Wrongly hashed. Should be %s is %s",mustValue,attributes[j]));
-////                }
-//                String test = (""+values[j]).endsWith(".0") ? (""+values[j]).replace(".0", "") : ""+values[j];
-//                if(! columnStrings[j].equals(test)) throw new NumberFormatException("Wrongly hashed. "+columnStrings[j] + " as "+test);
-//            }
-//        } catch (NumberFormatException e){
-////            e.printStackTrace();
-//            values = null;
-//        }
-//        timeParsed += System.currentTimeMillis() - start;
-        hashed = true;
+//        columnStrings = valueStrings;
+//
+//    }
+
+    public ColumnValues(byte[][] valueBytes) {
+        System.arraycopy(valueBytes,1,rawData,0,4); // use last 4 entries
+
+        for (int i = 0; i < 4; i++) {
+            rawData[i] = Arrays.copyOf(valueBytes[i+1], valueBytes[i+1].length);
+        }
+        hashes = new int[rawData.length];
+        for (int i = 0; i < rawData.length; i++) {
+            hashes[i] = Arrays.hashCode(rawData[i]);
+        }
     }
+
+    public ColumnValues(String... strings) {
+        for (int i = 0; i < strings.length; i++) {
+            rawData[i] = Arrays.copyOf(strings[i].getBytes(), Snapshot.COLUMN_LENGTH);
+        }
+        hashes = new int[rawData.length];
+        for (int i = 0; i < rawData.length; i++) {
+            hashes[i] = Arrays.hashCode(rawData[i]);
+        }
+    }
+
+//    protected void parse(){
+//
+//        long before = System.currentTimeMillis();
+//
+//        StringBuilder sb = new StringBuilder();
+//        for (int i = 0; i < columnStrings.length; i++) {
+//            sb.append(columnStrings[i]);
+//            sb.append("\n");
+//        }
+//        normString = sb.toString();
+//        valuesHash = normString.hashCode();
+//
+//        timeParsed += System.currentTimeMillis()-before;
+////        long start = System.currentTimeMillis();
+////        try {
+////            values = new double[4];
+////            for (int j = 0; j < 4; j++) {
+////
+////                values[j] = Double.parseDouble(columnStrings[j]);
+//////                BigDecimal mustValue = new BigDecimal(columnStrings[j+1]);
+//////                if(mustValue.compareTo() != 0){
+//////                    throw new NumberFormatException(String.format("Wrongly hashed. Should be %s is %s",mustValue,attributes[j]));
+//////                }
+////                String test = (""+values[j]).endsWith(".0") ? (""+values[j]).replace(".0", "") : ""+values[j];
+////                if(! columnStrings[j].equals(test)) throw new NumberFormatException("Wrongly hashed. "+columnStrings[j] + " as "+test);
+////            }
+////        } catch (NumberFormatException e){
+//////            e.printStackTrace();
+////            values = null;
+////        }
+////        timeParsed += System.currentTimeMillis() - start;
+//        hashed = true;
+//    }
 
     @Override
     public boolean equals(Object o) {
         ColumnValues other = (ColumnValues) o;
 
-        if(!hashed)
-            parse();
-        if(!other.hashed)
-            other.parse();
+//        if(!hashed)
+//            parse();
+//        if(!other.hashed)
+//            other.parse();
+//
+////        if(other.valuesHash != this.valuesHash){
+////            System.out.println(this);
+////            System.out.println();
+////            System.out.println(other);
+////        }
+//
 
-//        if(other.valuesHash != this.valuesHash){
-//            System.out.println(this);
-//            System.out.println();
-//            System.out.println(other);
-//        }
-
-        if(other.valuesHash == this.valuesHash && ! other.normString.equals(this.normString))
-            throw new ArithmeticException(String.format("Same hash %s for different values: %s %s", valuesHash, this.normString, other.normString));
-
-        return other.valuesHash == this.valuesHash;
+        if(Arrays.equals(other.hashes,this.hashes) && ! Arrays.deepEquals(this.rawData, other.rawData)){
+            throw new ArithmeticException(String.format("Same hash %s for different values: %s    and    %s", Arrays.toString(hashes), this.toString(), other.toString()));
+        }
+        return Arrays.equals(other.hashes,this.hashes);
 //        if(!other.hashed)
 //            other.parse();
 //        if(values == null || other.values == null){
@@ -91,29 +119,34 @@ public class ColumnValues {
 
     }
 
-    @Override
-    public int hashCode() {
-        return valuesHash;
-//        int result = values != null ? Arrays.hashCode(values) : 0;
-//        result = 31 * result + (columnStrings != null ? Arrays.hashCode(columnStrings) : 0);
-//        return result;
-    }
+//    @Override
+//    public int hashCode() {
+//        return hash;
+////        int result = values != null ? Arrays.hashCode(values) : 0;
+////        result = 31 * result + (columnStrings != null ? Arrays.hashCode(columnStrings) : 0);
+////        return result;
+//    }
 
     /**
      * Test data constructor.
      */
     public static ColumnValues random(){
         Random random = new Random();
-        String[] columnStrings = new String[4];
-        for (int i = 0; i < columnStrings.length; i++) {
-            columnStrings[i] = ""+random.nextInt(maxRandomValue);
+        byte[][] byteValues = new byte[4][Snapshot.COLUMN_LENGTH];
+        for (int i = 0; i < byteValues.length; i++) {
+            random.nextBytes(byteValues[i]);
         }
-        return new ColumnValues(columnStrings);
+        return new ColumnValues(byteValues);
     }
 
     @Override
     public String toString() {
-        if(!hashed)parse();
-        return normString;
+        String result = "";
+        for (int i = 0; i < rawData.length; i++) {
+            result += new String(rawData[i]) + ";";
+        }
+        return result;
+//        if(!hashed)parse();
+//        return normString;
     }
 }

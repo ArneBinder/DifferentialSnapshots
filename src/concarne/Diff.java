@@ -24,39 +24,39 @@ public class Diff {
     public String forSnaps;
 
 
-//    public Diff (Snapshot snapshotA, Snapshot snapshotB) {
-//
-//        forSnaps = snapshotA.path + " " + snapshotB.path;
-//
-//        for (Map.Entry<Identifier, ColumnValues> t1 : snapshotA.tuples.entrySet()) {
-//
-//            ColumnValues t1ValuesInB = snapshotB.tuples.get(t1.getKey());
-//            if (t1ValuesInB != null){
-//                if ( ! t1.getValue().equals(t1ValuesInB)) {
-//                    ops.put(t1.getKey(), SUB);
-//                }
-//
-//            } else {
-//                ops.put(t1.getKey(), DEL);
-//            }
-//        }
-//
-//        for (Map.Entry<Identifier, ColumnValues> t2 : snapshotB.tuples.entrySet()) {
-//
-//            ColumnValues t2ValuesInA = snapshotA.tuples.get(t2.getKey());
-//            if (t2ValuesInA == null){
-//                ops.put(t2.getKey(), INS);
-//            }
-//        }
-//
-//        countOps();
-//    }
+    public Diff (Snapshot snapshotA, Snapshot snapshotB) {
 
-    public Diff(Snapshot snapshotA, final Snapshot snapshotB){
+        forSnaps = snapshotA.path + " " + snapshotB.path;
 
-        this(snapshotA, snapshotB, Runtime.getRuntime().availableProcessors());//Runtime.getRuntime().availableProcessors()
+        for (Map.Entry<Identifier, ColumnValues> t1 : snapshotA.tuples.entrySet()) {
 
+            ColumnValues t1ValuesInB = snapshotB.tuples.get(t1.getKey());
+            if (t1ValuesInB != null){
+                if ( ! t1.getValue().equals(t1ValuesInB)) {
+                    ops.put(t1.getKey(), SUB);
+                }
+
+            } else {
+                ops.put(t1.getKey(), DEL);
+            }
+        }
+
+        for (Map.Entry<Identifier, ColumnValues> t2 : snapshotB.tuples.entrySet()) {
+
+            ColumnValues t2ValuesInA = snapshotA.tuples.get(t2.getKey());
+            if (t2ValuesInA == null){
+                ops.put(t2.getKey(), INS);
+            }
+        }
+
+        countOps();
     }
+
+//    public Diff(Snapshot snapshotA, final Snapshot snapshotB){
+//
+//        this(snapshotA, snapshotB, Runtime.getRuntime().availableProcessors());//Runtime.getRuntime().availableProcessors()
+//
+//    }
 
     public Diff (Snapshot snapshotA, final Snapshot snapshotB, int numThreads) {
 
