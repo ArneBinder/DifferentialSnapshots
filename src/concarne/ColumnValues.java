@@ -60,10 +60,17 @@ public class ColumnValues {
     public boolean equals(Object o) {
         ColumnValues other = (ColumnValues) o;
 
-
-        if(!hashed){
+        if(!hashed)
             parse();
-        }
+        if(!other.hashed)
+            other.parse();
+
+//        if(other.valuesHash != this.valuesHash){
+//            System.out.println(this);
+//            System.out.println();
+//            System.out.println(other);
+//        }
+
         if(other.valuesHash == this.valuesHash && ! other.normString.equals(this.normString))
             throw new ArithmeticException(String.format("Same hash %s for different values: %s %s", valuesHash, this.normString, other.normString));
 

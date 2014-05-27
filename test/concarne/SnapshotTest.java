@@ -1,19 +1,13 @@
 package concarne;
 
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
-import com.sun.xml.internal.fastinfoset.util.CharArray;
 import org.apache.commons.io.FileUtils;
 import org.junit.Test;
 
 import java.io.*;
-import java.nio.CharBuffer;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-
-import static org.junit.Assert.*;
 
 public class SnapshotTest {
 
@@ -79,6 +73,7 @@ public class SnapshotTest {
         System.out.println(Runtime.getRuntime().availableProcessors());
 
         Snapshot s = new Snapshot("data/R1.csv");
+        System.out.println("file size (bytes) "+(new File("data/R1.csv").length()) );
         long before = System.currentTimeMillis();
 
 //        ImmutableMap<Identifier, ColumnValues> tup = ImmutableMap.copyOf(s.tuples);
@@ -133,8 +128,26 @@ public class SnapshotTest {
 
     }
 
+    @Test public void iterateSwitchArray(){
+
+        byte[] arr1 = new byte[4];
+        byte[] arr2 = new byte[8];
+
+        for (int i = 0; i < arr1.length; i++) {
+
+            System.out.println(i);
+            if( arr1 != arr2 && i == arr1.length-1){
+                arr1 = arr2;
+                i = -1;
+            }
+
+        }
+
+    }
+
+
     @Test public void readFirstBlock() throws IOException {
-        Snapshot snapshot = new Snapshot("data/R3.csv",1024,2);
+        Snapshot snapshot = new Snapshot("data/R3.csv",1024);
     }
 
 }

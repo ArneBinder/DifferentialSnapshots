@@ -42,6 +42,8 @@ public class Main {
 
         System.out.println("\ntimeParsed(values): " + ColumnValues.timeParsed + " ms");
 
+        System.out.println(String.format("Time for reverse ins: %s time for all other ops (multi-threaded): %s check sum %s",Diff.totalInsCost, Diff.totalOpWithoutInsCost, Diff.checkSum));
+
         System.out.println("Total time elapsed: " + (System.currentTimeMillis() - before));
     }
 
