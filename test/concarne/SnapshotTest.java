@@ -1,5 +1,7 @@
 package concarne;
 
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 import com.sun.xml.internal.fastinfoset.util.CharArray;
 import org.apache.commons.io.FileUtils;
 import org.junit.Test;
@@ -8,6 +10,8 @@ import java.io.*;
 import java.nio.CharBuffer;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import static org.junit.Assert.*;
 
@@ -67,6 +71,65 @@ public class SnapshotTest {
         String s = new String(new byte[]{52,53});
         System.out.println(s);
         s.hashCode();
+
+    }
+
+    @Test public void createImmutableMap() throws IOException {
+
+        System.out.println(Runtime.getRuntime().availableProcessors());
+
+        Snapshot s = new Snapshot("data/R1.csv");
+        long before = System.currentTimeMillis();
+
+//        ImmutableMap<Identifier, ColumnValues> tup = ImmutableMap.copyOf(s.tuples);
+//        ImmutableList<Identifier> keys = tup.keySet().asList();
+//        System.out.print("Immutable conversion time: ");
+//        System.out.println(System.currentTimeMillis()-before);
+
+
+        before = System.currentTimeMillis();
+
+        Set<Map.Entry<Identifier, ColumnValues>> entrySet = s.tuples.entrySet();
+        Map.Entry<Identifier,ColumnValues>[] entries = entrySet.toArray(new Map.Entry[entrySet.size()]);
+
+//        for (int i = 0; i < 10; i++) {
+//            System.out.println(entries[i].getKey()+" "+entries[i].getValue());
+//        }
+//        Set<Identifier> keySet = s.tuples.keySet();
+//        Identifier[] keysArray = keySet.toArray(new Identifier[keySet.size()]);
+        System.out.print("Needed time: ");
+        System.out.println(System.currentTimeMillis()-before);
+
+    }
+
+    private List<String> resultsForSample(){
+
+        return Arrays.asList(
+        "R1,R1,0,0,0",
+        "R1,R2,295,245,911",
+        "R1,R3,299,239,948",
+        "R1,R4,298,278,968",
+        "R1,R5,297,317,955",
+        "R2,R1,245,295,911",
+        "R2,R2,0,0,0",
+        "R2,R3,249,239,929",
+        "R2,R4,250,280,944",
+        "R2,R5,249,319,945",
+        "R3,R1,239,299,948",
+        "R3,R2,239,249,929",
+        "R3,R3,0,0,0",
+        "R3,R4,237,277,991",
+        "R3,R5,236,316,983",
+        "R4,R1,278,298,968",
+        "R4,R2,280,250,944",
+        "R4,R3,277,237,991",
+        "R4,R4,0,0,0",
+        "R4,R5,277,317,1009",
+        "R5,R1,317,297,955",
+        "R5,R2,319,249,945",
+        "R5,R3,316,236,983",
+        "R5,R4,317,277,1009",
+        "R5,R5,0,0,0");
 
     }
 

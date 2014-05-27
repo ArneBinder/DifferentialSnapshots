@@ -104,4 +104,9 @@ public class ColumnValues {
         return new ColumnValues(columnStrings);
     }
 
+    @Override
+    public String toString() {
+        if(!hashed)parse();
+        return normString;
+    }
 }

@@ -5,6 +5,8 @@ import com.sun.org.apache.bcel.internal.generic.NOP;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Created by macbookdata on 23.05.14.
@@ -12,7 +14,7 @@ import java.util.Random;
 public class Diff {
 
 
-    public HashMap<Identifier, Byte> ops = new HashMap<>();
+    public ConcurrentHashMap<Identifier, Byte> ops = new ConcurrentHashMap<>();
     int[] counts = new int[3];
 
     public Diff(){
@@ -23,28 +25,55 @@ public class Diff {
 
 
     public String forSnaps;
-    public Diff (Snapshot snapshotA, Snapshot snapshotB) {
 
+
+
+    public Diff (Snapshot snapshotA, final Snapshot snapshotB, int numThreads) {
+
+        // output info to describe for which snapshots this diff is
         forSnaps = snapshotA.path + " " + snapshotB.path;
 
-        for (Map.Entry<Identifier, ColumnValues> t1 : snapshotA.tuples.entrySet()) {
+        // partition input snapshot
+        Set<Map.Entry<Identifier, ColumnValues>> entrySet = snapshotA.tuples.entrySet();
+        final Map.Entry<Identifier,ColumnValues>[] entries = entrySet.toArray(new Map.Entry[entrySet.size()]);
 
-            ColumnValues t1ValuesInB = snapshotB.tuples.get(t1.getKey());
-            if (t1ValuesInB != null){
-                if ( ! t1.getValue().equals(t1ValuesInB)) {
-                    ops.put(t1.getKey(), SUB);
+        Thread[] workers = new Thread[numThreads];
+
+        int step = entries.length/numThreads;
+        for (int i = 0; i < numThreads; i++) {
+
+            final int from = i*step, to = i == numThreads-1 ? entries.length-1 : (i+1)*step-1;
+            System.out.println(String.format("Starting thread %s for diff %s in range [%s, %s]", i+1, forSnaps, from, to ));
+
+            workers[i] = new Thread(new Runnable() {
+                int fromIdx = from, toIdx = to;
+                @Override public void run() {
+
+                    for (int j = fromIdx; j <= toIdx; j++) {
+                        Map.Entry<Identifier, ColumnValues> t1 = entries[j];
+
+                        ColumnValues t1ValuesInB = snapshotB.tuples.get(t1.getKey());
+                        if (t1ValuesInB != null){
+                            if ( ! t1.getValue().equals(t1ValuesInB)) {
+                                ops.put(t1.getKey(), SUB);
+                            }
+
+                        } else {
+                            ops.put(t1.getKey(), DEL);
+                        }
+                    }
+
                 }
+            });
 
-            } else {
-                ops.put(t1.getKey(), DEL);
-            }
+            workers[i].start();
         }
 
-        for (Map.Entry<Identifier, ColumnValues> t2 : snapshotB.tuples.entrySet()) {
-
-            ColumnValues t2ValuesInA = snapshotA.tuples.get(t2.getKey());
-            if (t2ValuesInA == null){
-                ops.put(t2.getKey(), INS);
+        for (int i = 0; i < numThreads; i++) {
+            try {
+                workers[i].join();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
             }
         }
 
