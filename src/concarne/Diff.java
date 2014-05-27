@@ -12,7 +12,7 @@ import java.util.Random;
 public class Diff {
 
 
-    HashMap<Identifier, Byte> ops = new HashMap<>();
+    public HashMap<Identifier, Byte> ops = new HashMap<>();
     int[] counts = new int[3];
 
     public Diff(){
@@ -22,7 +22,7 @@ public class Diff {
     }
 
 
-    String forSnaps;
+    public String forSnaps;
     public Diff (Snapshot snapshotA, Snapshot snapshotB) {
 
         forSnaps = snapshotA.path + " " + snapshotB.path;

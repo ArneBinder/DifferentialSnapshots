@@ -1,9 +1,9 @@
 <component name="libraryTable">
   <library name="Guava">
     <CLASSES>
-      <root url="file://$PROJECT_DIR$/lib/Guava" />
       <root url="file://$PROJECT_DIR$/lib/commons-io-2.4" />
       <root url="file://$USER_HOME$/dev/java/lib/junit" />
+      <root url="jar://$PROJECT_DIR$/lib/Guava/guava-17.0.jar!/" />
     </CLASSES>
     <JAVADOC>
       <root url="file://$PROJECT_DIR$/lib/commons-io-2.4/docs" />
@@ -13,7 +13,6 @@
     </SOURCES>
     <jarDirectory url="file://$USER_HOME$/dev/java/lib/junit" recursive="false" />
     <jarDirectory url="file://$PROJECT_DIR$/lib/commons-io-2.4" recursive="false" />
-    <jarDirectory url="file://$PROJECT_DIR$/lib/Guava" recursive="false" />
     <jarDirectory url="file://$PROJECT_DIR$/lib/commons-io-2.4" recursive="false" type="SOURCES" />
   </library>
 </component>

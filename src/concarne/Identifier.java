@@ -12,7 +12,7 @@ class Identifier {
 
         try {
             id = Long.parseLong(string);
-            if(! string.equals(""+id)) throw new NumberFormatException("Wrongly parsed.");
+            if(! string.equals(""+id)) throw new NumberFormatException("Wrongly hashed.");
         } catch (NumberFormatException e){
             //e.printStackTrace();
             this.idString = string;

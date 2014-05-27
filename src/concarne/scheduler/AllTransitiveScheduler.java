@@ -1,45 +1,20 @@
-package concarne;
+package concarne.scheduler;
 
-import org.junit.Test;
+import concarne.Diff;
+import concarne.Snapshot;
 
-import java.io.IOException;
-import java.util.Arrays;
+/**
+ * Created by macbookdata on 27.05.14.
+ */
+public class AllTransitiveScheduler extends Scheduler{
 
-import static org.junit.Assert.*;
-
-public class DiffTest {
-
-    @Test
-    public void transitiveConstructor() throws IOException {
-
-        Snapshot a = new Snapshot("data/R1.csv");
-        Snapshot b = new Snapshot("data/R2.csv");
-        Snapshot c = new Snapshot("data/R3.csv");
-
-        Diff expectedAC = new Diff(a,c);
-        Diff ab = new Diff(a,b);
-        Diff bc = new Diff(b,c);
-        Diff transitive = new Diff(a,c,ab,bc);
-
-        System.out.println(expectedAC.getCounts(false));
-        System.out.println(transitive.getCounts(false));
-
+    public AllTransitiveScheduler(Snapshot[] snapshots){
+        super(snapshots);
     }
 
-    @Test public void transitiveNaiveOrder() throws IOException {
-
-        long before = System.currentTimeMillis();
+    public void execute(){
 
         int A = 0, B = 1, C = 2, D = 3, E = 4;
-        Snapshot[] snapshots = new Snapshot[]{
-            new Snapshot("data/R1.csv"),
-            new Snapshot("data/R2.csv"),
-            new Snapshot("data/R3.csv"),
-            new Snapshot("data/R4.csv"),
-            new Snapshot("data/R5.csv")
-        };
-
-
         Diff[][] anchor = new Diff[5][5];
         anchor[0] = new Diff[]{
                 new Diff(),
@@ -72,8 +47,5 @@ public class DiffTest {
             }
         }
 
-        System.out.println("Total time: "+(System.currentTimeMillis()-before));
-
     }
-
 }
